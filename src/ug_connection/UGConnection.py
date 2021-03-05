@@ -2,7 +2,7 @@ import paramiko
 
 
 class UGConnection:
-    """
+    """ SSH connection for communication between the client and the remote server
     >>> # DONE_TODO: remove credentials before commit
     >>> HOSTNAME = ""
     >>> USERNAME = ""
@@ -60,6 +60,14 @@ class UGConnection:
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     def connect(self, hostname, username, passwd=None, key_filename=None):
+        """ Connect to the remote server
+
+        :param hostname: remote server host name
+        :param username: user name on the remote server
+        :param passwd: password for user authentication
+        :param key_filename: (unused if passwd is not None) private RSA key for user authentication
+        :return: None
+        """
         # if the client is already connected, we should attempt to reuse the connection
         if self.connected:
             if hostname == self.hostname and username == self.username:
@@ -103,6 +111,10 @@ class UGConnection:
             raise e
 
     def disconnect(self):
+        """ Disconnect the SSH client "client"
+
+        :return: None
+        """
         self.client.close()
 
         self.hostname = None
@@ -111,6 +123,11 @@ class UGConnection:
 
     @staticmethod
     def ssh_keygen(key_filename):
+        """ Generate and save an RSA SSH private key on the local machine, return a public key
+
+        :param key_filename: path to where the private key should be saved
+        :return: passphrase of the public key
+        """
         # 2048 is the default size of RSA keys
         rsa_key = paramiko.RSAKey.generate(2048)
 
@@ -129,6 +146,11 @@ class UGConnection:
         return "ssh-rsa " + rsa_key.get_base64() + " " + os_username + "@" + os_hostname
 
     def save_keys(self, key_filename):
+        """ Generate an RSA SSH key. Save the private key on the local machine, and save the public one on the remote.
+
+        :param key_filename: path to where the private key should be saved
+        :return: None
+        """
         if not self.connected:
             raise PermissionError("Misuse: Client not connected.")
 
@@ -143,4 +165,11 @@ class UGConnection:
             raise SystemError("Not able to save pub key on the remote, exit_status=%d" % exit_status)
 
     def exec_command(self, command):
+        """ Execute some command on the remote.
+        NOTE: This function is non-blocking. If blocking is required, call recv_exit_status() on the channel. e.g.
+            stdout.channel.recv_exit_status()
+
+        :param command: command to be executed
+        :return: stdin, stdout, stderr of the excuted command
+        """
         return self.client.exec_command(command)
