@@ -157,19 +157,29 @@ class UGConnection:
         # generate and save the private key on the local machine
         pub_key = UGConnection.ssh_keygen(key_filename)
         # save the public key onto the remote server
-        _, stdout, stderr = self.exec_command(
+        exit_status, _, _, _ = self.exec_command_blocking(
             "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >>  ~/.ssh/authorized_keys" % pub_key)
-        # exec_command is non-blocking so we should wait until the command completion
-        exit_status = stdout.channel.recv_exit_status()
-        if stdout.channel.recv_exit_status() != 0:
+        if exit_status != 0:
             raise SystemError("Not able to save pub key on the remote, exit_status=%d" % exit_status)
 
     def exec_command(self, command):
-        """ Execute some command on the remote.
+        """ Execute some command on the remote and return the outputs.
         NOTE: This function is non-blocking. If blocking is required, call recv_exit_status() on the channel. e.g.
             stdout.channel.recv_exit_status()
 
         :param command: command to be executed
-        :return: stdin, stdout, stderr of the excuted command
+        :return: stdin, stdout, stderr of the executed command
         """
         return self.client.exec_command(command)
+
+    def exec_command_blocking(self, command):
+        """ Execute some command on the remote and return the exit_status and the outputs of the execution.
+        NOTE: This function is blocking.
+
+        :param command: command to be executed
+        :return: exit_status, stdin, stdout, stderr of the executed command
+        """
+        stdin, stdout, stderr = self.client.exec_command(command)
+        exit_status = stdout.channel.recv_exit_status()
+
+        return exit_status, stdin, stdout, stderr
